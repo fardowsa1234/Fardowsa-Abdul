@@ -1,1 +1,0 @@
-# Fardowsa-Abdul
