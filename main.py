@@ -17,7 +17,7 @@ class LibraryManagementSystem:
         self.root.configure(bg="lightblue")
 
         # GUI elements
-        self.title_label = tk.Label(root, text="Library Management System", font=("Arial", 24), fg="blue", bg="lightblue")
+        self.title_label = tk.Label(root, text="LIBRARY MANAGEMENT SYSTEM", font=("Arial", 24), fg="blue", bg="lightblue")
         self.title_label.pack(pady=20)
 
         self.id_label = tk.Label(root, text="Book ID", font=("Arial", 12), fg="green", bg="lightblue")
