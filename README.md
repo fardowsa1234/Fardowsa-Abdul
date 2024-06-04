@@ -68,7 +68,7 @@ To run this project locally, follow these steps:
 
 ## Screenshots
 
-![Library Management System](Screenshot.png)
+![Library Management System(Library Management System.png)
 
 ## Contributing
 
