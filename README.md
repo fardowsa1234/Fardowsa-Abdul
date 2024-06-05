@@ -22,8 +22,8 @@ To run this project locally, follow these steps:
 1. **Clone the repository:**
 
     ```bash
-    git clone https://github.com/fardowsa1234/library-management-system.git
-    cd library-management-system
+    git clone https://github.com/fardowsa1234/Fardowsa-Abdul-library-management-system.git
+    cd Fardowsa-Abdul-library-management-system
     ```
 
 2. **Create a virtual environment and activate it (optional but recommended):**
@@ -68,7 +68,7 @@ To run this project locally, follow these steps:
 
 ## Screenshots
 
-![Library Management System(Library Management System.png)
+![Library Management System](Screenshot.png)
 
 ## Contributing
 
