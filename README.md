@@ -45,7 +45,7 @@ To run this project locally, follow these steps:
 4. **Run the application:**
 
     ```bash
-    python main.py
+    python library.py
     ```
 
 ## Usage
