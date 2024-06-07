@@ -1,305 +1,383 @@
 from tkinter import *
 from tkinter import ttk, messagebox
-import sqlite3
+from sqlalchemy import create_engine, Column, Integer, String, Date, ForeignKey, MetaData
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, relationship, validates
+import datetime
 
+# SQLAlchemy setup
+Base = declarative_base()
+
+class Member(Base):
+    __tablename__ = 'members'
+    id = Column(Integer, primary_key=True)
+    membertype = Column(String, nullable=False)
+    prnno = Column(String, nullable=False)
+    idno = Column(String, nullable=False)
+    firstname = Column(String, nullable=False)
+    lastname = Column(String, nullable=False)
+    address1 = Column(String, nullable=False)
+    address2 = Column(String, nullable=False)
+    postcode = Column(String, nullable=False)
+    mobile = Column(String, nullable=False)
+
+    books = relationship('Book', backref='member', cascade='all, delete-orphan')
+
+    @validates('postcode')
+    def validate_postcode(self, key, postcode):
+        if len(postcode) != 5 or not postcode.isdigit():
+            raise ValueError("Postcode must be a 5-digit number")
+        return postcode
+
+    @validates('mobile')
+    def validate_mobile(self, key, mobile):
+        if not mobile.isdigit() or len(mobile) < 10:
+            raise ValueError("Invalid mobile number")
+        return mobile
+
+class Book(Base):
+    __tablename__ = 'books'
+    id = Column(Integer, primary_key=True)
+    bookid = Column(String, nullable=False)
+    title = Column(String, nullable=False)
+    author = Column(String, nullable=False)
+    dateborrowed = Column(Date, nullable=False)
+    daysonbook = Column(Integer, nullable=False)
+    dateoverdue = Column(Date, nullable=False)
+    latereturnfine = Column(String, nullable=False)
+    member_id = Column(Integer, ForeignKey('members.id'))
+
+# Database setup
+engine = create_engine('sqlite:///library.db')
+
+# Drop the existing books table if it exists
+meta = MetaData()
+meta.reflect(bind=engine)
+if 'books' in meta.tables:
+    books_table = meta.tables['books']
+    books_table.drop(engine)
+
+# Create tables
+Base.metadata.create_all(engine)
+
+Session = sessionmaker(bind=engine)
+session = Session()
+
+# GUI setup
 class LibraryManagementSystem:
     def __init__(self, root):
         self.root = root
         self.root.title("Library Management System")
-        self.root.geometry("1550x800+0+0")
+        self.root.geometry("1350x750+0+0")
 
-        lbtitle = Label(self.root, text="LIBRARY MANAGEMENT SYSTEM", bg="powder blue", fg="green", bd=20, relief=RIDGE,
-                        font=("times new roman", 50, "bold"), padx=2, pady=6)
-        lbtitle.pack(side=TOP, fill=X)
+        # Variables
+        self.membertype = StringVar()
+        self.prnno = StringVar()
+        self.idno = StringVar()
+        self.firstname = StringVar()
+        self.lastname = StringVar()
+        self.address1 = StringVar()
+        self.address2 = StringVar()
+        self.postcode = StringVar()
+        self.mobile = StringVar()
+        self.bookid = StringVar()
+        self.title = StringVar()
+        self.author = StringVar()
+        self.dateborrowed = StringVar()
+        self.daysonbook = StringVar()
+        self.dateoverdue = StringVar()
+        self.latereturnfine = StringVar()
+        self.dateborrowed_var = StringVar()
 
-        frame = Frame(self.root, bd=12, relief=RIDGE, padx=20, bg="powder blue")
-        frame.place(x=0, y=130, width=1530, height=400)
+        # GUI Design
+        self.title_frame = Frame(self.root, bd=10, relief=RIDGE, padx=20, bg="powder blue")
+        self.title_frame.pack(side=TOP, fill=X)
+        self.lbl_title = Label(self.title_frame, text="Library Management System", font=("arial", 40, "bold"), bg="powder blue")
+        self.lbl_title.grid(row=0, column=0, padx=200)
 
-        # Database connection and table creation
-        self.conn = sqlite3.connect('library.db')
-        self.cur = self.conn.cursor()
-        self.cur.execute('''CREATE TABLE IF NOT EXISTS members (
-                                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                                membertype TEXT,
-                                prnno TEXT,
-                                idno TEXT,
-                                firstname TEXT,
-                                lastname TEXT,
-                                address1 TEXT,
-                                address2 TEXT,
-                                postcode TEXT,
-                                mobile TEXT,
-                                bookid TEXT,
-                                booktitle TEXT,
-                                author TEXT,
-                                dateborrowed TEXT,
-                                daysonbook TEXT,
-                                dateoverdue TEXT,
-                                latereturnfine TEXT)''')
-        self.conn.commit()
+        self.member_frame = LabelFrame(self.root, text="Member Information", bd=10, relief=RIDGE, padx=20, font=("arial", 12, "bold"))
+        self.member_frame.place(x=0, y=130, width=400, height=620)
 
-        self.selected_id = None  # Initialize selected_id
+        self.book_frame = LabelFrame(self.root, text="Book Details", bd=10, relief=RIDGE, padx=20, font=("arial", 12, "bold"))
+        self.book_frame.place(x=400, y=130, width=450, height=620)
 
-        # Data Frame Left
-        DataFrameLeft = LabelFrame(frame, text="Library Members details", bg="powder blue", fg="green", bd=12, relief=RIDGE,
-                                   font=("times new roman", 12, "bold"), padx=2, pady=6)
-        DataFrameLeft.place(x=0, y=5, width=900, height=350)
+        self.button_frame = Frame(self.root, bd=10, relief=RIDGE, padx=20)
+        self.button_frame.place(x=850, y=130, width=500, height=620)
 
-        lblmember = Label(DataFrameLeft, bg="powder blue", text="Member Type", font=("times new roman", 15, "bold"), padx=2, pady=6)
-        lblmember.grid(row=0, column=0, sticky=W)
+        self.display_frame = Frame(self.root, bd=10, relief=RIDGE, padx=20)
+        self.display_frame.place(x=0, y=750, width=1350, height=250)
 
-        self.comMember = ttk.Combobox(DataFrameLeft, state="readonly", font=("arial", 12, "bold"), width=27)
-        self.comMember["value"] = ("Admin", "Staff", "Student", "Lecturer")
-        self.comMember.grid(row=0, column=1)
+        # Member Information Widgets
+        self.lbl_membertype = Label(self.member_frame, text="Member Type", font=("arial", 12, "bold"), padx=2, pady=6)
+        self.lbl_membertype.grid(row=0, column=0, sticky=W)
+        self.cbo_membertype = ttk.Combobox(self.member_frame, textvariable=self.membertype, state='readonly', font=("arial", 12, "bold"), width=23)
+        self.cbo_membertype['value'] = ('Student', 'Lecturer', 'Admin', 'Staff')
+        self.cbo_membertype.current(0)
+        self.cbo_membertype.grid(row=0, column=1)
 
-        labels_and_entries = [
-            ("Prn no", 1, 0, "prnno"),
-            ("ID No", 2, 0, "idno"),
-            ("First Name", 3, 0, "firstname"),
-            ("Last Name", 4, 0, "lastname"),
-            ("Address1", 5, 0, "address1"),
-            ("Address2", 6, 0, "address2"),
-            ("Post Code", 7, 0, "postcode"),
-            ("Mobile", 8, 0, "mobile"),
-            ("Book Title", 1, 2, "booktitle"),
-            ("Book Id", 0, 2, "bookid"),
-            ("Author Name", 2, 2, "author"),
-            ("Date Borrowed", 3, 2, "dateborrowed"),
-            ("Days On Book", 4, 2, "daysonbook"),
-            ("Date Over Due", 7, 2, "dateoverdue"),
-            ("Late Return Fine", 6, 2, "latereturnfine"),
-        ]
+        self.lbl_prnno = Label(self.member_frame, text="PRN No.", font=("arial", 12, "bold"), padx=2, pady=6)
+        self.lbl_prnno.grid(row=1, column=0, sticky=W)
+        self.txt_prnno = Entry(self.member_frame, textvariable=self.prnno, font=("arial", 12, "bold"), width=25)
+        self.txt_prnno.grid(row=1, column=1)
 
-        self.entries = {}
+        self.lbl_idno = Label(self.member_frame, text="ID No.", font=("arial", 12, "bold"), padx=2, pady=6)
+        self.lbl_idno.grid(row=2, column=0, sticky=W)
+        self.txt_idno = Entry(self.member_frame, textvariable=self.idno, font=("arial", 12, "bold"), width=25)
+        self.txt_idno.grid(row=2, column=1)
 
-        for text, row, col, var in labels_and_entries:
-            label = Label(DataFrameLeft, bg="powder blue", text=text, font=("times new roman", 12, "bold"), padx=2, pady=6)
-            label.grid(row=row, column=col, sticky=W)
-            entry = Entry(DataFrameLeft, font=("times new roman", 13, "bold"), width=29)
-            entry.grid(row=row, column=col+1)
-            self.entries[var] = entry
+        self.lbl_firstname = Label(self.member_frame, text="First Name", font=("arial", 12, "bold"), padx=2, pady=6)
+        self.lbl_firstname.grid(row=3, column=0, sticky=W)
+        self.txt_firstname = Entry(self.member_frame, textvariable=self.firstname, font=("arial", 12, "bold"), width=25)
+        self.txt_firstname.grid(row=3, column=1)
 
-        # Data Frame Right
-        DataFrameRight = LabelFrame(frame, text="Book Details", bg="powder blue", fg="green", bd=12, relief=RIDGE,
-                                    font=("times new roman", 12, "bold"), padx=20, pady=6)
-        DataFrameRight.place(x=870, y=5, width=500, height=350)
+        self.lbl_lastname = Label(self.member_frame, text="Last Name", font=("arial", 12, "bold"), padx=2, pady=6)
+        self.lbl_lastname.grid(row=4, column=0, sticky=W)
+        self.txt_lastname = Entry(self.member_frame, textvariable=self.lastname, font=("arial", 12, "bold"), width=25)
+        self.txt_lastname.grid(row=4, column=1)
 
-        self.textBox = Text(DataFrameRight, font=("arial", 12, "bold"), width=32, height=16, padx=2, pady=6)
-        self.textBox.grid(row=0, column=2)
+        self.lbl_address1 = Label(self.member_frame, text="Address 1", font=("arial", 12, "bold"), padx=2, pady=6)
+        self.lbl_address1.grid(row=5, column=0, sticky=W)
+        self.txt_address1 = Entry(self.member_frame, textvariable=self.address1, font=("arial", 12, "bold"), width=25)
+        self.txt_address1.grid(row=5, column=1)
 
-        listScrollbar = Scrollbar(DataFrameRight)
-        listScrollbar.grid(row=0, column=1, sticky="ns")
+        self.lbl_address2 = Label(self.member_frame, text="Address 2", font=("arial", 12, "bold"), padx=2, pady=6)
+        self.lbl_address2.grid(row=6, column=0, sticky=W)
+        self.txt_address2 = Entry(self.member_frame, textvariable=self.address2, font=("arial", 12, "bold"), width=25)
+        self.txt_address2.grid(row=6, column=1)
 
-        listBooks = ['Head First Book', 'Learn Python The Hard Way', 'Python Programming', "Secret Rahshy", "Python CookBook",
-                     'Into Machine Learning', "Fluent Python", 'Machine Techno', 'My Python', 'Joss Ellif Guru',
-                     'Elite Jungle Python', 'Jungli Python', 'Pune Python', 'Machine Python', 'Advanced Python',
-                     'Into Python', 'RedChill Python', 'Ishq Python']
+        self.lbl_postcode = Label(self.member_frame, text="Postcode", font=("arial", 12, "bold"), padx=2, pady=6)
+        self.lbl_postcode.grid(row=7, column=0, sticky=W)
+        self.txt_postcode = Entry(self.member_frame, textvariable=self.postcode, font=("arial", 12, "bold"), width=25)
+        self.txt_postcode.grid(row=7, column=1)
 
-        listbox = Listbox(DataFrameRight, font=("arial", 12, "bold"), width=20, height=16, yscrollcommand=listScrollbar.set)
-        listbox.grid(row=0, column=0, padx=0, pady=4)
-        listScrollbar.config(command=listbox.yview)
+        self.lbl_mobile = Label(self.member_frame, text="Mobile", font=("arial", 12, "bold"), padx=2, pady=6)
+        self.lbl_mobile.grid(row=8, column=0, sticky=W)
+        self.txt_mobile = Entry(self.member_frame, textvariable=self.mobile, font=("arial", 12, "bold"), width=25)
+        self.txt_mobile.grid(row=8, column=1)
 
-        for item in listBooks:
-            listbox.insert(END, item)
+        # Book Details Widgets
+        self.lbl_bookid = Label(self.book_frame, text="Book ID", font=("arial", 12, "bold"), padx=2, pady=6)
+        self.lbl_bookid.grid(row=0, column=0, sticky=W)
+        self.txt_bookid = Entry(self.book_frame, textvariable=self.bookid, font=("arial", 12, "bold"), width=25)
+        self.txt_bookid.grid(row=0, column=1)
 
-        # Buttons Frame
-        framebutton = Frame(self.root, bd=12, relief=RIDGE, padx=20, bg="powder blue")
-        framebutton.place(x=0, y=540, width=1530, height=70)
+        self.lbl_title = Label(self.book_frame, text="Title", font=("arial", 12, "bold"), padx=2, pady=6)
+        self.lbl_title.grid(row=1, column=0, sticky=W)
+        self.txt_title = Entry(self.book_frame, textvariable=self.title, font=("arial", 12, "bold"), width=25)
+        self.txt_title.grid(row=1, column=1)
 
-        button_texts = ["Add Data", "Show Data", "Update", "Delete", "Reset", "Exit"]
-        button_commands = [self.add_data, self.show_data, self.update_data, self.delete_data, self.reset_data, self.exit_app]
-        
-        for i, (text, command) in enumerate(zip(button_texts, button_commands)):
-            btn = Button(framebutton, text=text, font=("arial", 12, "bold"), width=23, bg="blue", fg="white", command=command)
-            btn.grid(row=0, column=i)
+        self.lbl_author = Label(self.book_frame, text="Author", font=("arial", 12, "bold"), padx=2, pady=6)
+        self.lbl_author.grid(row=2, column=0, sticky=W)
+        self.txt_author = Entry(self.book_frame, textvariable=self.author, font=("arial", 12, "bold"), width=25)
+        self.txt_author.grid(row=2, column=1)
 
-        # Information Frame
-        FrameDetails = Frame(self.root, bd=12, relief=RIDGE, padx=20, bg="powder blue")
-        FrameDetails.place(x=0, y=610, width=1530, height=150)
+        self.lbl_dateborrowed = Label(self.book_frame, text="Date Borrowed", font=("arial", 12, "bold"), padx=2, pady=6)
+        self.lbl_dateborrowed.grid(row=3, column=0, sticky=W)
+        self.txt_dateborrowed = Entry(self.book_frame, textvariable=self.dateborrowed, font=("arial", 12, "bold"), width=25)
+        self.txt_dateborrowed.grid(row=3, column=1)
 
-        Table_frame = Frame(FrameDetails, bd=12, relief=RIDGE, bg="powder blue")
-        Table_frame.place(x=0, y=2, width=1460, height=190)
+        self.lbl_daysonbook = Label(self.book_frame, text="Days On Book", font=("arial", 12, "bold"), padx=2, pady=6)
+        self.lbl_daysonbook.grid(row=4, column=0, sticky=W)
+        self.txt_daysonbook = Entry(self.book_frame, textvariable=self.daysonbook, font=("arial", 12, "bold"), width=25)
+        self.txt_daysonbook.grid(row=4, column=1)
 
-        xscroll = ttk.Scrollbar(Table_frame, orient=HORIZONTAL)
-        yscroll = ttk.Scrollbar(Table_frame, orient=VERTICAL)
+        self.lbl_dateoverdue = Label(self.book_frame, text="Date Overdue", font=("arial", 12, "bold"), padx=2, pady=6)
+        self.lbl_dateoverdue.grid(row=5, column=0, sticky=W)
+        self.txt_dateoverdue = Entry(self.book_frame, textvariable=self.dateoverdue, font=("arial", 12, "bold"), width=25)
+        self.txt_dateoverdue.grid(row=5, column=1)
 
-        self.library_table = ttk.Treeview(Table_frame, column=("id", "membertype", "prnno", "idno", "firstname", "lastname", "address1",
-                                                              "address2", "postcode", "mobile", "bookid", "booktitle", "author",
-                                                              "dateborrowed", "daysonbook", "dateoverdue", "latereturnfine"), 
-                                          xscrollcommand=xscroll.set, yscrollcommand=yscroll.set)
-        
-        xscroll.pack(side=BOTTOM, fill=X)
-        yscroll.pack(side=RIGHT, fill=Y)
+        self.lbl_latereturnfine = Label(self.book_frame, text="Late Return Fine", font=("arial", 12, "bold"), padx=2, pady=6)
+        self.lbl_latereturnfine.grid(row=6, column=0, sticky=W)
+        self.txt_latereturnfine = Entry(self.book_frame, textvariable=self.latereturnfine, font=("arial", 12, "bold"), width=25)
+        self.txt_latereturnfine.grid(row=6, column=1)
 
-        xscroll.config(command=self.library_table.xview)
-        yscroll.config(command=self.library_table.yview)
+        # Button Frame Widgets
+        self.btn_add = Button(self.button_frame, text="Add Data", font=("arial", 12, "bold"), width=20, command=self.add_data)
+        self.btn_add.grid(row=0, column=0, padx=10, pady=10)
 
-        self.library_table.heading("id", text="ID")
-        self.library_table.heading("membertype", text="Member Type")
-        self.library_table.heading("prnno", text="PRN No")
-        self.library_table.heading("idno", text="ID No")
-        self.library_table.heading("firstname", text="First Name")
-        self.library_table.heading("lastname", text="Last Name")
-        self.library_table.heading("address1", text="Address1")
-        self.library_table.heading("address2", text="Address2")
-        self.library_table.heading("postcode", text="Post Code")
-        self.library_table.heading("mobile", text="Mobile")
-        self.library_table.heading("bookid", text="Book ID")
-        self.library_table.heading("booktitle", text="Book Title")
-        self.library_table.heading("author", text="Author")
-        self.library_table.heading("dateborrowed", text="Date Borrowed")
-        self.library_table.heading("daysonbook", text="Days On Book")
-        self.library_table.heading("dateoverdue", text="Date Over Due")
-        self.library_table.heading("latereturnfine", text="Late Return Fine")
+        self.btn_display = Button(self.button_frame, text="Display Data", font=("arial", 12, "bold"), width=20, command=self.display_data)
+        self.btn_display.grid(row=1, column=0, padx=10, pady=10)
 
-        self.library_table["show"] = "headings"
-        self.library_table.pack(fill=BOTH, expand=1)
-        
-        self.library_table.column("id", width=50)
-        self.library_table.column("membertype", width=150) 
-        self.library_table.column("prnno", width=150)   
-        self.library_table.column("idno", width=150)
-        self.library_table.column("firstname", width=150) 
-        self.library_table.column("lastname", width=150)
-        self.library_table.column("address1", width=150)
-        self.library_table.column("address2", width=150)
-        self.library_table.column("postcode", width=150)
-        self.library_table.column("mobile", width=150)
-        self.library_table.column("bookid", width=150)
-        self.library_table.column("booktitle", width=150)
-        self.library_table.column("author", width=100)
-        self.library_table.column("dateborrowed", width=150)
-        self.library_table.column("daysonbook", width=150)
-        self.library_table.column("dateoverdue", width=150)
-        self.library_table.column("latereturnfine", width=150)
+        self.btn_clear = Button(self.button_frame, text="Clear Data", font=("arial", 12, "bold"), width=20, command=self.clear_data)
+        self.btn_clear.grid(row=2, column=0, padx=10, pady=10)
 
-        self.library_table.bind("<ButtonRelease-1>", self.get_cursor)
+        self.btn_update = Button(self.button_frame, text="Update Data", font=("arial", 12, "bold"), width=20, command=self.update_data)
+        self.btn_update.grid(row=3, column=0, padx=10, pady=10)
+
+        self.btn_delete = Button(self.button_frame, text="Delete Data", font=("arial", 12, "bold"), width=20, command=self.delete_data)
+        self.btn_delete.grid(row=4, column=0, padx=10, pady=10)
+
+        self.btn_exit = Button(self.button_frame, text="Exit", font=("arial", 12, "bold"), width=20, command=self.exit_system)
+        self.btn_exit.grid(row=5, column=0, padx=10, pady=10)
+
+        # Treeview Widget for Displaying Data
+        self.tv = ttk.Treeview(self.display_frame, columns=("MemberType", "PRNNo", "IDNo", "FirstName", "LastName", "Address1", "Address2", "Postcode", "Mobile", "BookID", "Title", "Author", "DateBorrowed", "DaysOnBook", "DateOverdue", "LateReturnFine"), show='headings')
+        self.tv.pack(fill=BOTH, expand=1)
+
+        for col in self.tv["columns"]:
+            self.tv.heading(col, text=col)
+            self.tv.column(col, width=100)
+
+        self.tv.bind("<ButtonRelease-1>", self.get_cursor)
 
     def add_data(self):
         try:
-            self.cur.execute('''INSERT INTO members (membertype, prnno, idno, firstname, lastname, address1, address2, postcode,
-                            mobile, bookid, booktitle, author, dateborrowed, daysonbook, dateoverdue, latereturnfine)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                             (self.comMember.get(),
-                              self.entries['prnno'].get(),
-                              self.entries['idno'].get(),
-                              self.entries['firstname'].get(),
-                              self.entries['lastname'].get(),
-                              self.entries['address1'].get(),
-                              self.entries['address2'].get(),
-                              self.entries['postcode'].get(),
-                              self.entries['mobile'].get(),
-                              self.entries['bookid'].get(),
-                              self.entries['booktitle'].get(),
-                              self.entries['author'].get(),
-                              self.entries['dateborrowed'].get(),
-                              self.entries['daysonbook'].get(),
-                              self.entries['dateoverdue'].get(),
-                              self.entries['latereturnfine'].get()))
-            self.conn.commit()
-            self.show_data()
-            messagebox.showinfo("Success", "Record added successfully")
-        except Exception as e:
-            messagebox.showerror("Error", str(e))
+            new_member = Member(
+                membertype=self.membertype.get(),
+                prnno=self.prnno.get(),
+                idno=self.idno.get(),
+                firstname=self.firstname.get(),
+                lastname=self.lastname.get(),
+                address1=self.address1.get(),
+                address2=self.address2.get(),
+                postcode=self.postcode.get(),
+                mobile=self.mobile.get()
+            )
+            new_book = Book(
+                bookid=self.bookid.get(),
+                title=self.title.get(),
+                author=self.author.get(),
+                dateborrowed=datetime.datetime.strptime(self.dateborrowed.get(), "%d/%m/%Y").date(),
+                daysonbook=int(self.daysonbook.get()),
+                dateoverdue=datetime.datetime.strptime(self.dateoverdue.get(), "%d/%m/%Y").date(),
+                latereturnfine=self.latereturnfine.get(),
+                member=new_member
+            )
 
-    def show_data(self):
-        self.cur.execute("SELECT * FROM members")
-        rows = self.cur.fetchall()
-        if len(rows) != 0:
-            self.library_table.delete(*self.library_table.get_children())
-            for row in rows:
-                self.library_table.insert('', END, values=row)
-            self.conn.commit()
+            session.add(new_member)
+            session.add(new_book)
+            session.commit()
+
+            messagebox.showinfo("Success", "Data added successfully")
+            self.display_data()  # Refresh the display
+        except Exception as e:
+            session.rollback()
+            messagebox.showerror("Error", f"Error adding data: {e}")
+
+    def display_data(self):
+        # Clear the Treeview
+        for row in self.tv.get_children():
+            self.tv.delete(row)
+
+        # Fetch data from the database and insert into the Treeview
+        members = session.query(Member).all()
+        for member in members:
+            for book in member.books:
+                self.tv.insert("", "end", values=(
+                    member.membertype, member.prnno, member.idno, member.firstname, member.lastname,
+                    member.address1, member.address2, member.postcode, member.mobile,
+                    book.bookid, book.title, book.author, book.dateborrowed, book.daysonbook,
+                    book.dateoverdue, book.latereturnfine
+                ))
+
+    def clear_data(self):
+        self.membertype.set("")
+        self.prnno.set("")
+        self.idno.set("")
+        self.firstname.set("")
+        self.lastname.set("")
+        self.address1.set("")
+        self.address2.set("")
+        self.postcode.set("")
+        self.mobile.set("")
+        self.bookid.set("")
+        self.title.set("")
+        self.author.set("")
+        self.dateborrowed.set("")
+        self.daysonbook.set("")
+        self.dateoverdue.set("")
+        self.latereturnfine.set("")
+
+    def get_cursor(self, event):
+        cursor_row = self.tv.focus()
+        content = self.tv.item(cursor_row)
+        row = content['values']
+
+        if row:
+            self.membertype.set(row[0])
+            self.prnno.set(row[1])
+            self.idno.set(row[2])
+            self.firstname.set(row[3])
+            self.lastname.set(row[4])
+            self.address1.set(row[5])
+            self.address2.set(row[6])
+            self.postcode.set(row[7])
+            self.mobile.set(row[8])
+            self.bookid.set(row[9])
+            self.title.set(row[10])
+            self.author.set(row[11])
+            self.dateborrowed.set(row[12])
+            self.daysonbook.set(row[13])
+            self.dateoverdue.set(row[14])
+            self.latereturnfine.set(row[15])
 
     def update_data(self):
-        try:
-            self.cur.execute('''UPDATE members SET membertype=?, prnno=?, idno=?, firstname=?, lastname=?, address1=?, address2=?,
-                            postcode=?, mobile=?, bookid=?, booktitle=?, author=?, dateborrowed=?, daysonbook=?, dateoverdue=?,
-                            latereturnfine=? WHERE id=?''',
-                             (self.comMember.get(),
-                              self.entries['prnno'].get(),
-                              self.entries['idno'].get(),
-                              self.entries['firstname'].get(),
-                              self.entries['lastname'].get(),
-                              self.entries['address1'].get(),
-                              self.entries['address2'].get(),
-                              self.entries['postcode'].get(),
-                              self.entries['mobile'].get(),
-                              self.entries['bookid'].get(),
-                              self.entries['booktitle'].get(),
-                              self.entries['author'].get(),
-                              self.entries['dateborrowed'].get(),
-                              self.entries['daysonbook'].get(),
-                              self.entries['dateoverdue'].get(),
-                              self.entries['latereturnfine'].get(),
-                              self.selected_id))
-            self.conn.commit()
-            self.show_data()
-            messagebox.showinfo("Success", "Record updated successfully")
-        except Exception as e:
-            messagebox.showerror("Error", str(e))
-
-    def delete_data(self):
-        if self.selected_id is None:
-            messagebox.showerror("Error", "No record selected")
+      try:
+        selected_row = self.tv.focus()
+        if not selected_row:
+            messagebox.showwarning("Warning", "Please select a record to update")
             return
 
+        content = self.tv.item(selected_row)
+        row = content['values']
+
+        if len(row) < 16:
+            messagebox.showerror("Error", "Selected record does not contain all required data fields")
+            return
+
+        member_id = session.query(Member.id).filter(Member.prnno == row[1]).scalar()
+
+        session.query(Member).filter_by(id=member_id).update({
+            Member.membertype: self.membertype.get(),
+            Member.prnno: self.prnno.get(),
+            Member.idno: self.idno.get(),
+            Member.firstname: self.firstname.get(),
+            Member.lastname: self.lastname.get(),
+            Member.address1: self.address1.get(),
+            Member.address2: self.address2.get(),
+            Member.postcode: self.postcode.get(),
+            Member.mobile: self.mobile.get()
+        })
+
+        session.query(Book).filter_by(member_id=member_id).update({
+            Book.bookid: self.bookid.get(),
+            Book.title: self.title.get(),
+            Book.author: self.author.get(),
+            Book.dateborrowed: datetime.datetime.strptime(self.dateborrowed.get(), "%d/%m/%Y").date(),
+            Book.daysonbook: int(self.daysonbook.get()),
+            Book.dateoverdue: datetime.datetime.strptime(self.dateoverdue.get(), "%d/%m/%Y").date(),
+            Book.latereturnfine: self.latereturnfine.get()
+        })
+
+        session.commit()
+        messagebox.showinfo("Success", "Data updated successfully")
+        self.display_data()  # Refresh the display
+      except Exception as e:
+        session.rollback()
+        messagebox.showerror("Error", f"Error updating data: {e}")
+
+
+    def delete_data(self):
         try:
-            self.cur.execute('DELETE FROM members WHERE id=?', (self.selected_id,))
-            self.conn.commit()
-            self.show_data()
-            messagebox.showinfo("Success", "Record deleted successfully")
-            self.selected_id = None  # Clear the selected_id after deletion
+            selected_row = self.tv.focus()
+            content = self.tv.item(selected_row)
+            row = content['values']
+            member_id = session.query(Member.id).filter(Member.prnno == row[1]).scalar()
+
+            member = session.query(Member).filter_by(id=member_id).first()
+            if member:
+                session.delete(member)
+                session.commit()
+                messagebox.showinfo("Success", "Data deleted successfully")
+                self.display_data()  # Refresh the display
         except Exception as e:
-            messagebox.showerror("Error", str(e))
+            session.rollback()
+            messagebox.showerror("Error", f"Error deleting data: {e}")
 
-    def reset_data(self):
-        for entry in self.entries.values():
-            entry.delete(0, END)
-        self.comMember.set('')
-
-    def get_cursor(self, event=""):
-        cursor_row = self.library_table.focus()
-        contents = self.library_table.item(cursor_row)
-        row = contents['values']
-        if row:
-            self.selected_id = row[0]
-            self.comMember.set(row[1])
-            self.entries['prnno'].delete(0, END)
-            self.entries['prnno'].insert(END, row[2])
-            self.entries['idno'].delete(0, END)
-            self.entries['idno'].insert(END, row[3])
-            self.entries['firstname'].delete(0, END)
-            self.entries['firstname'].insert(END, row[4])
-            self.entries['lastname'].delete(0, END)
-            self.entries['lastname'].insert(END, row[5])
-            self.entries['address1'].delete(0, END)
-            self.entries['address1'].insert(END, row[6])
-            self.entries['address2'].delete(0, END)
-            self.entries['address2'].insert(END, row[7])
-            self.entries['postcode'].delete(0, END)
-            self.entries['postcode'].insert(END, row[8])
-            self.entries['mobile'].delete(0, END)
-            self.entries['mobile'].insert(END, row[9])
-            self.entries['bookid'].delete(0, END)
-            self.entries['bookid'].insert(END, row[10])
-            self.entries['booktitle'].delete(0, END)
-            self.entries['booktitle'].insert(END, row[11])
-            self.entries['author'].delete(0, END)
-            self.entries['author'].insert(END, row[12])
-            self.entries['dateborrowed'].delete(0, END)
-            self.entries['dateborrowed'].insert(END, row[13])
-            self.entries['daysonbook'].delete(0, END)
-            self.entries['daysonbook'].insert(END, row[14])
-            self.entries['dateoverdue'].delete(0, END)
-            self.entries['dateoverdue'].insert(END, row[15])
-            self.entries['latereturnfine'].delete(0, END)
-            self.entries['latereturnfine'].insert(END, row[16])
-
-    def exit_app(self):
+    def exit_system(self):
         self.root.destroy()
 
 if __name__ == "__main__":
     root = Tk()
-    app = LibraryManagementSystem(root)
+    application = LibraryManagementSystem(root)
     root.mainloop()
