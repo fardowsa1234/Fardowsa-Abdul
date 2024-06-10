@@ -31,17 +31,9 @@ To run this project locally, follow these steps:
     cd Fardowsa-Abdul-library-management-system
     ```
 
-2. **Create a virtual environment and activate it (optional but recommended):**
 
-    ```bash
-    python -m venv venv
-    # On Windows
-    venv\Scripts\activate
-    # On macOS/Linux
-    source venv/bin/activate
-    ```
 
-3. **Install the required packages:**
+2. **Install the required packages:**
 
     ```bash
     pip install tkinter
@@ -54,29 +46,89 @@ SQLAlchemy: SQL toolkit and Object-Relational Mapping (ORM) library.
 datetime: Standard library for manipulating dates and times.
 
 
-4. **Run the application:**
+3. **Run the application:**
 
     ```bash
     python library.py
+    CLI.py
     ```
+
 
 ## Usage
 
-1. **Add a Book:**
-   - Enter the Book ID, Title, Author, and Year in the respective fields.
-   - Click on the "Add Book" button to add the book to the database.
+### Graphical User Interface (GUI)
 
-2. **View Books:**
-   - Click on the "View Books" button to see a list of all books in the library.
-  # For the update part i am encoutering an error message and unable to fix it.
-3. **Update a Book:**
-   - Enter the Book ID of the book you want to update.
-   - Enter the new Title, Author, and Year.
-   - Click on the "Update Book" button to update the book details.
+1. **Add Data**: Enter member and book details in the respective fields and click "Add Data" to add the records to the database.
+2. **Display Data**: Click "Display Data" to view all records in the database.
+3. **Clear Data**: Click "Clear Data" to clear all input fields.
+4. **Update Data**: Select a record from the displayed data, modify the details, and click "Update Data" to update the record in the database.
+5. **Delete Data**: Select a record from the displayed data and click "Delete Data" to remove the record from the database.
+6. **Exit**: Click "Exit" to close the application.
 
-4. **Delete a Book:**
-   - Enter the Book ID of the book you want to delete.
-   - Click on the "Delete Book" button to remove the book from the database.
+### Command Line Interface (CLI)
+
+In addition to the GUI, a CLI version of the library management system is also provided. This allows for similar operations through the command line.
+
+1. **Add Data**: Use the following command to add a new member and book record:
+
+    ```bash
+    python library_cli.py add --membertype <type> --prnno <prn> --idno <id> --firstname <first> --lastname <last> --address1 <addr1> --address2 <addr2> --postcode <postcode> --mobile <mobile> --bookid <bookid> --title <title> --author <author> --dateborrowed <dd/mm/yyyy> --daysonbook <days> --dateoverdue <dd/mm/yyyy> --latereturnfine <fine>
+    ```
+
+2. **Display Data**: Use the following command to display all records:
+
+    ```bash
+    python library_cli.py display
+    ```
+
+3. **Update Data**: Use the following command to update an existing member and book record:
+
+    ```bash
+    python library_cli.py update --idno <id> --membertype <type> --prnno <prn> --firstname <first> --lastname <last> --address1 <addr1> --address2 <addr2> --postcode <postcode> --mobile <mobile> --bookid <bookid> --title <title> --author <author> --dateborrowed <dd/mm/yyyy> --daysonbook <days> --dateoverdue <dd/mm/yyyy> --latereturnfine <fine>
+    ```
+
+4. **Delete Data**: Use the following command to delete a member and book record:
+
+    ```bash
+    python library_cli.py delete --idno <id>
+    ```
+
+## Example
+
+### GUI
+
+1. Launch the application:
+
+    ```bash
+    python library_management_system.py
+    ```
+
+2. Use the GUI to manage member and book records.
+
+### CLI
+
+1. Add a new member and book record:
+
+    ```bash
+    python library_cli.py add --membertype "Student" --prnno "123456" --idno "ID001" --firstname "John" --lastname "Doe" --address1 "123 Main St" --address2 "Apt 4" --postcode "12345" --mobile "9876543210" --bookid "B001" --title "Python Programming" --author "Author Name" --dateborrowed "01/01/2023" --daysonbook "14" --dateoverdue "15/01/2023" --latereturnfine "$5"
+    ```
+
+2. Display all records:
+
+    ```bash
+    python library_cli.py display
+    ```
+
+3. Update an existing member and book record:
+
+    ```bash
+    python library_cli.py update --idno "ID001" --membertype "Faculty" --prnno "654321" --firstname "Jane" --lastname "Doe" --address1 "456 Elm St" --address2 "Suite 2" --postcode "54321" --mobile "1234567890" --bookid "B002" --title "Advanced Python" --author "Another Author" --dateborrowed "05/01/2023" --daysonbook "7" --dateoverdue "12/01/2023" --latereturnfine "$10"
+    ```
+
+4. Delete a member and book record:
+
+    ```bash
+    python library_cli.py delete --idno "ID001"
 
     ## Code Explanation
 SQLAlchemy Setup
@@ -94,11 +146,6 @@ display_data(): Fetches and displays all records from the database.
 delete_data(): Deletes selected records from the database.
 clear_data(): Clears input fields.
 get_cursor(): Fetches data from the selected record in the display.
-
-
-## Screenshots
-
-![Library Management System](/home/fardowsa123/Fardowsa-Abdul/Screenshot.png)
 
 ## Contributing
 

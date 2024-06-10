@@ -138,20 +138,20 @@ def main():
     parser_add_book.add_argument('member_id', type=int, nargs='?', help='ID of the member borrowing the book')
     parser_add_book.set_defaults(func=add_book)
 
-    # View members subcommand
+    # View members
     parser_view_members = subparsers.add_parser('view_members', help='View all members')
     parser_view_members.set_defaults(func=view_members)
 
-    # View books subcommand
+    # View books 
     parser_view_books = subparsers.add_parser('view_books', help='View all books')
     parser_view_books.set_defaults(func=view_books)
 
-    # Delete member subcommand
+    # Delete member
     parser_delete_member = subparsers.add_parser('delete_member', help='Delete a member by ID')
     parser_delete_member.add_argument('member_id', type=int, help='ID of the member to delete')
     parser_delete_member.set_defaults(func=delete_member)
 
-    # Reset auto-incrementing IDs subcommand
+    # Reset IDs
     parser_reset_ids = subparsers.add_parser('reset_ids', help='Reset auto-incrementing IDs for Member and Book tables')
     parser_reset_ids.set_defaults(func=reset_auto_increment)
 
