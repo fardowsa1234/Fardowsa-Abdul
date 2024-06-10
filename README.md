@@ -1,16 +1,18 @@
 # Library Management System
 
-# Overview
-The Library Management System is a desktop application built using Python's Tkinter library for the graphical user interface and SQLAlchemy for the database management. This system allows users to manage members and books in a library, including adding, (updating), displaying, and deleting records.
-
-
+## Description
+This is a library management system built using Python with a graphical user interface (GUI) using Tkinter and a command-line interface (CLI) using argparse. The project uses SQLAlchemy for ORM and SQLite as the database.
 
 ## Features
+- Add and manage library members.
+- Add and manage books borrowed by members.
+- Interact with the system using both GUI and CLI.
 
-- Add new books to the library.
-- ## Update details of existing books.##
-- Delete books from the library.
-- View the list of all books in the library.
+## Dependencies
+- Python 3.8+
+- SQLAlchemy
+- Tkinter (comes with Python standard library)
+
 
 ## Technologies Used
 
