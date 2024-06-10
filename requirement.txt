@@ -1,2 +1,4 @@
-SQLAlchemy
+SQLAlchemy==1.4.27      # ORM for database management
+SQLAlchemy==2.5.1 # Integration of  SQLAlchemy
 tk
+TKinter
