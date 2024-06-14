@@ -28,7 +28,7 @@ To run this project locally, follow these steps:
 
     ```bash
     git clone https://github.com/fardowsa1234/library-management-system-Abdullahi.git
-    cd Fardowsa-Abdul-library-management-system
+    cd library-management-system-abdullahi
     ```
 
 
@@ -49,8 +49,8 @@ datetime: Standard library for manipulating dates and times.
 3. **Run the application:**
 
     ```bash
-    python library.py
-    CLI.py
+    python3 library.py
+    python3 CLI.py
     ```
 
 
